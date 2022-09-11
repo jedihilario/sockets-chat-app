@@ -1,16 +1,49 @@
 const { Server } = require('net');
 
-const server = new Server();
+const END = 'EXIT';
+const HOST = '0.0.0.0'
 
-server.on('connection', ( socket ) => {
-    socket.setEncoding('utf-8');
+const error = (err) => {
+    console.error(err);
+    process.exit(1);
+}
 
-    socket.on('data', ( data ) => {
-        console.log(data);
-        socket.write(data);
+const listen = ( port ) => {
+    const server = new Server();
+
+    server.on('connection', ( socket ) => {
+        socket.setEncoding('utf-8');
+
+        socket.on('data', ( data ) => {
+            if(data === END) {
+                socket.end()
+            } else {
+                console.log(data);
+            }
+        });
     });
-});
 
-server.listen({ port : 8000, host : '0.0.0.0' }, () => {
-    console.log('Listening on port 8000')
-});
+    server.listen({ port , HOST }, () => {
+        console.log('Listening on port 8000')
+    });
+
+    server.on('error', ( err ) => error(err.message));
+}
+
+const main = () => {
+    if(process.argv.length != 3) {
+        error(`Usage: node ${__filename} $PORT`);
+    }
+
+    let port = process.argv[2];
+
+    if(isNaN(port)) error(`Invalid port ${port}: must be a number`);
+
+    port = Number(port);
+
+    listen(port);
+}
+
+if(require.main === module) {
+    main();
+}
