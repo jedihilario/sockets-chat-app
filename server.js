@@ -2,10 +2,19 @@ const { Server } = require('net');
 
 const END = 'EXIT';
 const HOST = '0.0.0.0'
+const connections = new Map();
 
 const error = (err) => {
     console.error(err);
     process.exit(1);
+}
+
+const sendMessage = (msg, origin) => {
+    for (const socket of connections.keys()) {
+        if(socket !== origin) {
+            socket.write(msg);
+        }
+    }
 }
 
 const listen = ( port ) => {
@@ -15,10 +24,15 @@ const listen = ( port ) => {
         socket.setEncoding('utf-8');
 
         socket.on('data', ( data ) => {
-            if(data === END) {
-                socket.end()
+            if(!connections.has(socket)) {
+                connections.set(socket, data);                
+            } else if(data === END) {
+                connections.delete(socket);
+                socket.end();
             } else {
-                console.log(data);
+                const fullMessage = `[${connections.get(socket)}]: ${data}`;
+                console.log(fullMessage);
+                sendMessage(fullMessage, socket);
             }
         });
     });
@@ -31,15 +45,11 @@ const listen = ( port ) => {
 }
 
 const main = () => {
-    if(process.argv.length != 3) {
-        error(`Usage: node ${__filename} $PORT`);
-    }
+    if(process.argv.length != 3) error(`Usage: node ${__filename} $PORT`);
+    
+    if(isNaN(process.argv[2])) error(`Invalid port ${port}: must be a number`);
 
-    let port = process.argv[2];
-
-    if(isNaN(port)) error(`Invalid port ${port}: must be a number`);
-
-    port = Number(port);
+    const port = Number(process.argv[2]);
 
     listen(port);
 }
